@@ -87,6 +87,7 @@ import random
 import argparse
 import signal
 import select
+import json
 
 #############################################################################
 
@@ -99,7 +100,6 @@ if sys.version_info > (3,):
 # Constants to convert between python timestamps and NTP 8B binary format [RFC1305]
 TIMEOFFSET = int(2208988800)    # Time Difference: 1-JAN-1900 to 1-JAN-1970
 ALLBITS = int(0xFFFFFFFF)       # To calculate 32bit fraction of the second
-
 
 def now():
     if (sys.platform == "win32"):
@@ -297,6 +297,41 @@ class twampStatistics():
         print("===============================================================================")
         sys.stdout.flush()
 
+    # dump statistics in JSON format
+    def dump_json(self, total):
+        if self.count > 0:
+            self.lossRT = total - self.count
+            outbound = {
+                "direction": "outbound",
+                "min": self.minOB,
+                "max": self.maxOB,
+                "avg": self.sumOB / self.count,
+                "jitter": self.jitterOB,
+                "loss": 100 * float(self.lossOB) / total
+            }
+            inbound = {
+                "direction": "inbound",
+                "min": self.minIB,
+                "max": self.maxIB,
+                "avg": self.sumIB / self.count,
+                "jitter": self.jitterIB,
+                "loss": 100 * float(self.lossIB) / total
+            }
+            roundtrip = {
+                "direction": "roundtrip",
+                "min": self.minRT,
+                "max": self.maxRT,
+                "avg": self.sumRT / self.count,
+                "jitter": self.jitterRT,
+                "loss": 100 * float(self.lossRT) / total
+            }
+            print(json.dumps([outbound, inbound, roundtrip]))
+        else:
+            print(json.dumps({"error": "no statistics available"}))
+
+        sys.stdout.flush()
+      
+
 #############################################################################
 
 
@@ -374,7 +409,12 @@ class twampySessionSender(udpSession):
                 log.info("Receive timeout for last packet (don't wait anymore)")
                 self.running = False
 
-        self.stats.dump(idx)
+        args = parser.parse_args()
+
+        if args.json:
+            self.stats.dump_json(idx)
+        else:
+            self.stats.dump(idx)
 
 
 class twampySessionReflector(udpSession):
@@ -534,6 +574,8 @@ class twampyControlClient:
 
 
 def twl_responder(args):
+    print("Starting twl_responder")
+
     reflector = twampySessionReflector(args)
     reflector.daemon = True
     reflector.name = "twl_responder"
@@ -546,15 +588,32 @@ def twl_responder(args):
 
 
 def twl_sender(args):
-    sender = twampySessionSender(args)
-    sender.daemon = True
-    sender.name = "twl_responder"
-    sender.start()
+    print("Starting twl_sender")
 
-    signal.signal(signal.SIGINT, sender.stop)
+    if args.forever == True:
+        while True:
+            sender = twampySessionSender(args)
+            sender.daemon = True
+            sender.name = "twl_responder"
+            sender.start()
 
-    while sender.is_alive():
-        time.sleep(0.1)
+            signal.signal(signal.SIGINT, sender.stop)
+
+            while sender.is_alive():
+                time.sleep(0.1)
+            time.sleep(60)
+
+            time.sleep(60)
+    else:
+        sender = twampySessionSender(args)
+        sender.daemon = True
+        sender.name = "twl_responder"
+        sender.start()
+
+        signal.signal(signal.SIGINT, sender.stop)
+
+        while sender.is_alive():
+            time.sleep(0.1)
 
 
 def twamp_controller(args):
@@ -721,6 +780,9 @@ if __name__ == '__main__':
     group.add_argument('near_end', nargs='?', metavar='local-ip:port', default=":20000")
     group.add_argument('-i', '--interval', metavar='msec', default=100,  type=int, help="[100,1000]")
     group.add_argument('-c', '--count',    metavar='packets', default=100,  type=int, help="[1..9999]")
+    group.add_argument('-f', '--forever', action='store_true', help="run forever")
+    group.add_argument('-j', '--json', action='store_true', help='JSON output')
+
 
     p_control = subparsers.add_parser('controller', help='TWAMP controller', parents=[debug_parser, ipopt_parser])
     group = p_control.add_argument_group("TWAMP controller options")
