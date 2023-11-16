@@ -88,6 +88,7 @@ import argparse
 import signal
 import select
 import json
+from prometheus_client import start_http_server, Histogram, Gauge, Enum
 
 #############################################################################
 
@@ -281,6 +282,27 @@ class twampStatistics():
 
         self.count += 1
 
+    def update_metrics(self, total):
+        
+        if self.count > 0:
+            self.lossRT = total - self.count
+
+            histogramSender.labels('outbound').observe(self.sumOB / self.count)
+            histogramSender.labels('inbound').observe(self.sumIB / self.count)
+            histogramSender.labels('roundtrip').observe(self.sumRT / self.count)
+
+            gaugeSender.labels('outbound').set(100 * float(self.lossOB) / self.count)
+            gaugeSender.labels('inbound').set(100 * float(self.lossIB) / self.count)
+            gaugeSender.labels('roundtrip').set(100 * float(self.lossRT) / self.count)
+
+            histogramSender.labels('outbound').observe(self.jitterOB)
+            histogramSender.labels('inbound').observe(self.jitterIB)
+            histogramSender.labels('roundtrip').observe(self.jitterRT)  
+
+            enumSender.state('ok')
+        else:
+            enumSender.state('error')
+
     def dump(self, total):
         print("===============================================================================")
         print("Direction         Min         Max         Avg          Jitter     Loss")
@@ -327,7 +349,7 @@ class twampStatistics():
             }
             print(json.dumps([outbound, inbound, roundtrip]))
         else:
-            print(json.dumps({"error": "no statistics available"}))
+            print(json.dumps({"message": "no statistics available because run failed"}))
 
         sys.stdout.flush()
       
@@ -411,6 +433,9 @@ class twampySessionSender(udpSession):
 
         args = parser.parse_args()
 
+        if args.metrics:
+            self.stats.update_metrics(idx)
+            
         if args.json:
             self.stats.dump_json(idx)
         else:
@@ -574,7 +599,9 @@ class twampyControlClient:
 
 
 def twl_responder(args):
+
     print("Starting twl_responder")
+    sys.stdout.flush()
 
     reflector = twampySessionReflector(args)
     reflector.daemon = True
@@ -588,9 +615,15 @@ def twl_responder(args):
 
 
 def twl_sender(args):
-    print("Starting twl_sender")
 
-    if args.forever == True:
+    if args.json:
+        print("{\"message\": \"Starting twl_sender\"}")
+    else:
+        print("Starting twl_sender")
+
+    sys.stdout.flush()
+
+    if args.forever:
         while True:
             sender = twampySessionSender(args)
             sender.daemon = True
@@ -755,6 +788,8 @@ if __name__ == '__main__':
     group.add_argument('-q', '--quiet',   action='store_true', help='disable logging')
     group.add_argument('-v', '--verbose', action='store_true', help='enhanced logging')
     group.add_argument('-d', '--debug',   action='store_true', help='extensive logging')
+    group.add_argument('-m', '--metrics', action='store_true', help='Enable Prometheus metrics. Default port is 8000. It only works for sender mode currently, enabling it for other modes has no effect.')
+
 
     ipopt_parser = argparse.ArgumentParser(add_help=False)
     group = ipopt_parser.add_argument_group("IP socket options")
@@ -805,6 +840,27 @@ if __name__ == '__main__':
     p_ctclient.set_defaults(parseop=True, func=twamp_ctclient)
     p_responder.set_defaults(parseop=True, func=twl_responder)
     p_dscptab.set_defaults(parseop=False, func=dscpTable)
+
+
+    args = parser.parse_args()
+
+    # Only supported for sender currently. Need to add to other modes.
+    if args.metrics:
+
+        port = 8000
+        if args.json:
+            print("{\"message\": \"Starting Prometheus metrics server on port %d\"}" % port)
+        else:
+            print("Starting Prometheus metrics server on port %d" % port)
+
+        # Setup Prometheus metrics
+        enumSender = Enum('twampy_result', 'TWAMP result', states=['ok', 'error'])
+        histogramSender = Histogram('twampy_latency', 'TWAMP latency in ms', ['direction'])
+        gaugeSender = Gauge('twampy_loss', 'TWAMP loss in percent', ['direction'])
+        histogramSender = Histogram('twampy_jitter', 'TWAMP jitter in ms', ['direction'])
+
+        start_http_server(port)
+
 
 #############################################################################
 
