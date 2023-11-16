@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  twampy-responder:
+    build: .
+    container_name: twampy-responder
+    command:
+      - "responder"
+    ports:
+      - "20001:20001/udp"
+    
+  twampy-sender:
+    container_name: twampy-sender
+    build: .
+    command: 
+      - "sender"
+      - "twampy-responder"
+      - "--forever"
+      - "--json"
+      - "--metrics"
+    ports:
+      - "8000:8000/tcp"
+    depends_on: 
+      - twampy-responder
