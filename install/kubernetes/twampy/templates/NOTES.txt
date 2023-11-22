@@ -1,0 +1,2 @@
+Check the logs of the sender component to see the measurement results. 
+Promtheus metrics and podMonitor are enabled by default.
