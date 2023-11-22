@@ -1,0 +1,17 @@
+{{ if .Values.responder.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "twampy.fullname" . }}-responder
+  labels:
+    {{- include "twampy.responder.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.sender.service.type }}
+  ports:
+    - port: {{ .Values.responder.service.port }}
+      targetPort: twamp
+      protocol: UDP
+      name: twamp
+  selector:
+    {{- include "twampy.responder.selectorLabels" . | nindent 4 }}
+{{ end }}
