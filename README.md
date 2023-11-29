@@ -3,8 +3,11 @@
 ![grafana dashboard](assets/grafana.png)
 
 This is the Python2 to Python3 conversion of [twampy](https://github.com/nokia/twampy/tree/master).
-On top of that it adds support for logging the results in json and exposing them via Prometheus metrics
-and it includes a Grafana dashboard for visualizing the results.
+
+On top of that it supercharges it by adding:
+- Helm chart for Kubernetes
+- Prometheus metrics
+- Grafana dashboard
 
 ## Usage
 
