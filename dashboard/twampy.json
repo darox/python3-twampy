@@ -42,7 +42,7 @@
       },
       "description": "Upper values is loss and second value is average latency in ms.",
       "gridPos": {
-        "h": 13,
+        "h": 16,
         "w": 18,
         "x": 0,
         "y": 1
@@ -65,7 +65,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "twampy_latency_avg_edge",
+          "expr": "twampy_edge",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -103,13 +103,14 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [],
           "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "super-light-blue",
+                "color": "green",
                 "value": null
               }
             ]
@@ -119,7 +120,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
+        "h": 4,
         "w": 6,
         "x": 18,
         "y": 1
@@ -128,16 +129,16 @@
       "options": {
         "colorMode": "value",
         "graphMode": "none",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
-            "last"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
         },
-        "textMode": "value_and_name"
+        "textMode": "value"
       },
       "pluginVersion": "10.1.5",
       "targets": [
@@ -148,38 +149,16 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum_over_time(twampy_result{twampy_result=\"ok\"}[$__range])",
+          "expr": "sum(increase(twampy_result_total{result=\"ok\"}[$__range]))",
           "format": "table",
-          "instant": true,
-          "legendFormat": "ok",
-          "range": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "sum_over_time(twampy_result{twampy_result=\"err\"}[$__range])",
-          "format": "table",
-          "hide": false,
-          "instant": true,
-          "legendFormat": "err",
-          "range": false,
-          "refId": "B"
         }
       ],
-      "title": "Measurement Results",
+      "title": "Successul Measurements",
       "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": "Value #A",
-            "renamePattern": "ok"
-          }
-        },
         {
           "id": "renameByRegex",
           "options": {
@@ -191,12 +170,178 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "id": 19,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "10.1.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(twampy_result_total{result=\"err\"}[$__range]))",
+          "format": "table",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Measurements",
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "Value #B",
+            "renamePattern": "err"
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 9
+      },
+      "id": 20,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.1.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "increase(twampy_result_total{result=\"err\"}[$__range]) > 0",
+          "format": "table",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": " Last Unsuccessful Measurements",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Value": true,
+              "container": true,
+              "endpoint": true,
+              "job": true,
+              "source": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "instance": "Node"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 17
       },
       "id": 6,
       "panels": [],
@@ -224,10 +369,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 11,
         "w": 6,
         "x": 0,
-        "y": 15
+        "y": 18
       },
       "id": 15,
       "options": {
@@ -307,10 +452,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 11,
         "w": 6,
         "x": 6,
-        "y": 15
+        "y": 18
       },
       "id": 16,
       "options": {
@@ -390,10 +535,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 11,
         "w": 6,
         "x": 12,
-        "y": 15
+        "y": 18
       },
       "id": 17,
       "options": {
@@ -473,10 +618,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 11,
         "w": 6,
         "x": 18,
-        "y": 15
+        "y": 18
       },
       "id": 18,
       "options": {
@@ -544,13 +689,13 @@
     "list": []
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Twampy",
   "uid": "ed1ae615-c347-43ef-8448-e907209c5f81",
-  "version": 13,
+  "version": 18,
   "weekStart": ""
 }

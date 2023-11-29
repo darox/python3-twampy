@@ -88,7 +88,7 @@ import argparse
 import signal
 import select
 import json
-from prometheus_client import start_http_server, Histogram, Gauge, Enum
+from prometheus_client import start_http_server, Gauge, Counter
 
 #############################################################################
 
@@ -310,7 +310,7 @@ class twampStatistics():
             SenderJitter.labels('inbound').set(round(self.jitterIB,2))
             SenderJitter.labels('roundtrip').set(round(self.jitterRT,2))
 
-            SenderResult.state('ok')
+            SenderResult.labels('ok').inc(1)
 
             if args.nodegraph:
                 avgLatency = round(self.sumRT / self.count, 2)
@@ -318,6 +318,7 @@ class twampStatistics():
                 SenderEdge.labels("{0}-{1}".format(hostname, sip), hostname, sip, loss, avgLatency).set(1)
         else:
             SenderEdge.labels("{0}-{1}".format(hostname, sip), hostname, sip, -1, -1).set(0)
+            SenderResult.labels('err').inc(1)
 
 
     def dump(self, total):
@@ -882,7 +883,7 @@ if __name__ == '__main__':
         SenderLatencyMax = Gauge('twampy_latency_max', 'TWAMP max latency in ms', ['direction'])
         SenderJitter = Gauge('twampy_jitter', 'TWAMP jitter in ms', ['direction'])
         SenderLoss = Gauge('twampy_loss', 'TWAMP loss in percent', ['direction'])
-        SenderResult = Enum('twampy_result', 'TWAMP result', states=['ok', 'error'])
+        SenderResult = Counter('twampy_result', 'If the measurement has succedded or not', ['result'])
 
 
         start_http_server(port)
