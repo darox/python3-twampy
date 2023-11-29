@@ -1,0 +1,80 @@
+{{- if not .Values.sender.daemonset -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "twampy.fullname" . }}
+  labels:
+    {{- include "twampy.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "twampy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.sender.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "twampy.labels" . | nindent 8 }}
+	{{- with .Values.sender.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.responder.hostNetwork }}
+      hostNetwork: true
+      {{ end }}
+      {{- with .Values.sender.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "twampy.sender.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.sender.serviceAccount.automount }}
+      securityContext:
+        {{- toYaml .Values.sender.podSecurityContext | nindent 8 }}
+      containers:
+        - name: sender
+          args: 
+            - sender
+            {{- toYaml .Values.sender.containerArgs | nindent 12 }}}
+          securityContext:
+            {{- toYaml .Values.sender.securityContext | nindent 12 }}
+          image: "{{ .Values.sender.image.repository }}:{{ .Values.sender.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{ if .Values.sender.config.metrics }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.sender.service.port }}
+              protocol: TCP
+            livenessProbe:
+              httpGet:
+                path: /
+                port: http
+            readinessProbe:
+              httpGet:
+                path: /
+                port: http
+          {{ end }}}
+          resources:
+            {{- toYaml .Values.sender.resources | nindent 12 }}
+          {{- with .Values.sender.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.sender.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sender.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sender.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sender.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end}}

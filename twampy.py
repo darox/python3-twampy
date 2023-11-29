@@ -283,25 +283,42 @@ class twampStatistics():
         self.count += 1
 
     def update_metrics(self, total):
-        
+
+        hostname = socket.gethostname()
+        sip, _, _ = parse_addr(args.far_end, 20000)
+
         if self.count > 0:
             self.lossRT = total - self.count
 
-            histogramSender.labels('outbound').observe(self.sumOB / self.count)
-            histogramSender.labels('inbound').observe(self.sumIB / self.count)
-            histogramSender.labels('roundtrip').observe(self.sumRT / self.count)
+            SenderLatencyMin.labels('outbound').set(round(self.minOB,2))
+            SenderLatencyMin.labels('inbound').set(round(self.minIB, 2))
+            SenderLatencyMin.labels('roundtrip').set(round(self.minRT, 2))
 
-            gaugeSender.labels('outbound').set(100 * float(self.lossOB) / self.count)
-            gaugeSender.labels('inbound').set(100 * float(self.lossIB) / self.count)
-            gaugeSender.labels('roundtrip').set(100 * float(self.lossRT) / self.count)
+            SenderLatencyMax.labels('outbound').set(round(self.maxOB,2))
+            SenderLatencyMax.labels('inbound').set(round(self.maxIB,2))
+            SenderLatencyMax.labels('roundtrip').set(round(self.maxRT,2))
 
-            histogramSender.labels('outbound').observe(self.jitterOB)
-            histogramSender.labels('inbound').observe(self.jitterIB)
-            histogramSender.labels('roundtrip').observe(self.jitterRT)  
+            SenderLatencyAvg.labels('outbound').set(round(self.sumOB / self.count,2))
+            SenderLatencyAvg.labels('inbound').set(round(self.sumIB / self.count,2))
+            SenderLatencyAvg.labels('roundtrip').set(round(self.sumRT / self.count,2))
 
-            enumSender.state('ok')
+            SenderLoss.labels('outbound').set(round(100 * float(self.lossOB) / self.count,2))
+            SenderLoss.labels('inbound').set(round(100 * float(self.lossIB) / self.count,2))
+            SenderLoss.labels('roundtrip').set(round(100 * float(self.lossRT) / self.count,2))
+
+            SenderJitter.labels('outbound').set(round(self.jitterOB,2))
+            SenderJitter.labels('inbound').set(round(self.jitterIB,2))
+            SenderJitter.labels('roundtrip').set(round(self.jitterRT,2))
+
+            SenderResult.state('ok')
+
+            if args.nodegraph:
+                avgLatency = round(self.sumRT / self.count, 2)
+                loss = round(100 * float(self.lossRT) / self.count, 2)
+                SenderEdge.labels("{0}-{1}".format(hostname, sip), hostname, sip, loss, avgLatency).set(1)
         else:
-            enumSender.state('error')
+            SenderEdge.labels("{0}-{1}".format(hostname, sip), hostname, sip, -1, -1).set(0)
+
 
     def dump(self, total):
         print("===============================================================================")
@@ -325,26 +342,26 @@ class twampStatistics():
             self.lossRT = total - self.count
             outbound = {
                 "direction": "outbound",
-                "min": self.minOB,
-                "max": self.maxOB,
-                "avg": self.sumOB / self.count,
-                "jitter": self.jitterOB,
+                "min": round(self.minOB, 2),
+                "max": round(self.maxOB,2),
+                "avg": round(self.sumOB / self.count, 2),
+                "jitter": round(self.jitterOB, 2),
                 "loss": 100 * float(self.lossOB) / total
             }
             inbound = {
                 "direction": "inbound",
-                "min": self.minIB,
-                "max": self.maxIB,
-                "avg": self.sumIB / self.count,
-                "jitter": self.jitterIB,
+                "min": round(self.minIB, 2),
+                "max": round(self.maxIB, 2),
+                "avg": round(self.sumIB / self.count, 2),
+                "jitter": round(self.jitterIB, 2),
                 "loss": 100 * float(self.lossIB) / total
             }
             roundtrip = {
                 "direction": "roundtrip",
-                "min": self.minRT,
-                "max": self.maxRT,
-                "avg": self.sumRT / self.count,
-                "jitter": self.jitterRT,
+                "min": round(self.minRT, 2),
+                "max": round(self.maxRT, 2),
+                "avg": round(self.sumRT / self.count, 2),
+                "jitter": round(self.jitterRT, 2),
                 "loss": 100 * float(self.lossRT) / total
             }
             print(json.dumps([outbound, inbound, roundtrip]))
@@ -784,11 +801,12 @@ if __name__ == '__main__':
 
     debug_options = debug_parser.add_argument_group("Debug Options")
     debug_options.add_argument('-l', '--logfile', metavar='filename', type=argparse.FileType('wb', 0), default='-', help='Specify the logfile (default: <stdout>)')
-    group = debug_options.add_mutually_exclusive_group()
+    group = debug_options
     group.add_argument('-q', '--quiet',   action='store_true', help='disable logging')
     group.add_argument('-v', '--verbose', action='store_true', help='enhanced logging')
     group.add_argument('-d', '--debug',   action='store_true', help='extensive logging')
     group.add_argument('-m', '--metrics', action='store_true', help='Enable Prometheus metrics. Default port is 8000. It only works for sender mode currently, enabling it for other modes has no effect.')
+    group.add_argument('-g', '--nodegraph', action='store_true', help='Enable Prometheus metrics for nodeGraph panel in Grafana.')
 
 
     ipopt_parser = argparse.ArgumentParser(add_help=False)
@@ -854,10 +872,18 @@ if __name__ == '__main__':
             print("Starting Prometheus metrics server on port %d" % port)
 
         # Setup Prometheus metrics
-        enumSender = Enum('twampy_result', 'TWAMP result', states=['ok', 'error'])
-        histogramSender = Histogram('twampy_latency', 'TWAMP latency in ms', ['direction'])
-        gaugeSender = Gauge('twampy_loss', 'TWAMP loss in percent', ['direction'])
-        histogramSender = Histogram('twampy_jitter', 'TWAMP jitter in ms', ['direction'])
+
+        # Setups metrics with high cardinality that will allow for nodeGraph panel in Grafana. 
+        if args.nodegraph:
+            SenderEdge = Gauge('twampy_latency_avg_edge', 'TWAMP avg RTT latency in ms', ['id', 'source', 'target', 'mainstat', 'secondarystat'])
+
+        SenderLatencyMin = Gauge('twampy_latency_min', 'TWAMP min latency in ms', ['direction'])
+        SenderLatencyAvg = Gauge('twampy_latency_avg', 'TWAMP avg latency in ms', ['direction'])
+        SenderLatencyMax = Gauge('twampy_latency_max', 'TWAMP max latency in ms', ['direction'])
+        SenderJitter = Gauge('twampy_jitter', 'TWAMP jitter in ms', ['direction'])
+        SenderLoss = Gauge('twampy_loss', 'TWAMP loss in percent', ['direction'])
+        SenderResult = Enum('twampy_result', 'TWAMP result', states=['ok', 'error'])
+
 
         start_http_server(port)
 
