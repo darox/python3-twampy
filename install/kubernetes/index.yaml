@@ -1,0 +1,17 @@
+apiVersion: v1
+entries:
+  twampy:
+  - apiVersion: v2
+    appVersion: 0.0.1
+    created: "2023-11-29T12:39:25.794531+01:00"
+    description: A Helm chart for Kubernetes to deploy twampy. Twampy is a TWAMP client
+      and server implementation written in Python. Orginally developed by Nokia and
+      customized by https://github.com/darox/python3-twampy.
+    digest: a721da622a03db0adcc6139abc01edac4a1573ea2261d6ec550810f39ceaa054
+    icon: https://raw.githubusercontent.com/darox/python3-twampy/main/assets/icon.png
+    name: twampy
+    type: application
+    urls:
+    - twampy/releases/twampy-0.0.1.tgz
+    version: 0.0.1
+generated: "2023-11-29T12:39:25.79329+01:00"
