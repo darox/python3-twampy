@@ -12,6 +12,6 @@ entries:
     name: twampy
     type: application
     urls:
-    - https://github.com/darox/python3-twampy/blob/main/install/kubernetes/releases/twampy-0.0.1.tgz
+    - https://github.com/darox/python3-twampy/raw/main/install/kubernetes/releases/twampy-0.0.1.tgz
     version: 0.0.1
 generated: "2023-11-29T12:39:25.79329+01:00"
