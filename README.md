@@ -23,6 +23,16 @@ Start sender:
 python3 twampy.py sender
 ```
 
+## Helm chart
+
+Twampy can be deployed as Helm chart in Kubernetes.
+
+```bash
+helm repo add twampy https://darox.github.io/python3-twampy/install/kubernetes/
+helm repo update
+helm install twampy twampy/twampy -n twampy --create-namespace
+```
+
 ## Prometheus metrics
 
 The sender component is the only component that exposes metrics at this moment. 
