@@ -1,0 +1,29 @@
+{{ if .Values.sender.podMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "twampy.fullname" . }}-sender
+  {{- if .Values.sender.podMonitor.annotations }}
+  annotations: 
+    {{- toYaml .Values.sender.podMonitor.annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "twampy.sender.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: 
+      {{- include "twampy.sender.labels" . | nindent 6 }}
+  podMetricsEndpoints:
+  - port: metrics 
+    {{- if .Values.sender.podMonitor.relabelToNode }}
+    relabelings:  
+      - sourceLabels: [__meta_kubernetes_pod_node_name]
+        regex: '(.*)'
+        targetLabel: instance
+        replacement: '$1'
+      - sourceLabels: [__meta_kubernetes_pod_node_name]
+        regex: '(.*)'
+        targetLabel: source
+        replacement: '$1'
+    {{- end }}
+{{ end }}

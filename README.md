@@ -1,16 +1,12 @@
 # Python tools for TWAMP and TWAMP light
 
+![grafana dashboard](assets/grafana.png)
+
 This is the Python2 to Python3 conversion of [twampy](https://github.com/nokia/twampy/tree/master).
-On top of that it adds support for logging the results in json and exposing them via Prometheus metrics.
-
-Twampy is a Python implementation of the Two-Way Active Measurement
-Protocol (TWAMP and TWAMP light) as defined in RFC5357. This tool
-was developed to validate the Nokia SR OS TWAMP implementation.
-
-
+On top of that it adds support for logging the results in json and exposing them via Prometheus metrics
+and it includes a Grafana dashboard for visualizing the results.
 
 ## Usage
-
 
 Start responder:
 
@@ -21,18 +17,39 @@ python3 twampy.py responder
 Start sender:
 
 ```bash
-python3 twampy.py sender --json --metrics
+python3 twampy.py sender
 ```
 
 ## Prometheus metrics
 
-The metrics are exposed on port 8000.
+The sender component is the only component that exposes metrics at this moment. 
+Metrics can be enabled by running the sender via:
 
 ```bash
-curl localhost:8000/metrics
+python3 twampy.py sender --metrics
 ```
 
-```text
+Metrics for plotting the Node Graph in Grafana can be enabled by running the sender via:
+
+```bash
+python3 twampy.py sender --nodegraph
+```
+
+⚠️ This is only experimental. It seems that Grafana has several
+problems with plotting the Node Graph based on Prometheus metrics.
+The metric suitable for plotting the Node Graph in Grafana is `twampy_edge`. 
+Enabling this metric in environments with a large number of nodes can cause 
+problems with cardinality in Prometheus. 
+See [Grafana docs](https://grafana.com/docs/grafana/latest/panels-visualizations/visualizations/node-graph/)
+for more information on the Node Graph.
+
+The metrics are exposed on port 8000.
+
+
+```bash
+
+curl localhost:8000/metrics
+
 # HELP python_gc_objects_collected_total Objects collected during gc
 # TYPE python_gc_objects_collected_total counter
 python_gc_objects_collected_total{generation="0"} 319.0
@@ -45,7 +62,7 @@ python_gc_objects_uncollectable_total{generation="1"} 0.0
 python_gc_objects_uncollectable_total{generation="2"} 0.0
 # HELP python_gc_collections_total Number of times this generation was collected
 # TYPE python_gc_collections_total counter
-python_gc_collections_total{generation="0"} 33.0
+python_gc_collections_total{generation="0"} 32.0
 python_gc_collections_total{generation="1"} 2.0
 python_gc_collections_total{generation="2"} 0.0
 # HELP python_info Python platform information
@@ -53,92 +70,59 @@ python_gc_collections_total{generation="2"} 0.0
 python_info{implementation="CPython",major="3",minor="12",patchlevel="0",version="3.12.0"} 1.0
 # HELP process_virtual_memory_bytes Virtual memory size in bytes.
 # TYPE process_virtual_memory_bytes gauge
-process_virtual_memory_bytes 2.66973184e+08
+process_virtual_memory_bytes 2.67464704e+08
 # HELP process_resident_memory_bytes Resident memory size in bytes.
 # TYPE process_resident_memory_bytes gauge
-process_resident_memory_bytes 3.2518144e+07
+process_resident_memory_bytes 9.035776e+06
 # HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
 # TYPE process_start_time_seconds gauge
-process_start_time_seconds 1.70012840124e+09
+process_start_time_seconds 1.70125332948e+09
 # HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
 # TYPE process_cpu_seconds_total counter
-process_cpu_seconds_total 89.16
+process_cpu_seconds_total 10.219999999999999
 # HELP process_open_fds Number of open file descriptors.
 # TYPE process_open_fds gauge
 process_open_fds 8.0
 # HELP process_max_fds Maximum number of open file descriptors.
 # TYPE process_max_fds gauge
 process_max_fds 1.048576e+06
-# HELP twampy_result TWAMP result
-# TYPE twampy_result gauge
-twampy_result{twampy_result="ok"} 1.0
-twampy_result{twampy_result="error"} 0.0
-# HELP twampy_latency TWAMP latency in ms
-# TYPE twampy_latency histogram
+# HELP twampy_edge Metric suitable for plotting node graph in Grafana. mainstat is loss and secondarystat is avg RTT latency in ms
+# TYPE twampy_edge gauge
+twampy_edge{id="fe7abd77ae43-twampy-responder",mainstat="0.0",secondarystat="0.95",source="fe7abd77ae43",target="twampy-responder"} 1.0
+# HELP twampy_latency_min TWAMP min latency in ms
+# TYPE twampy_latency_min gauge
+twampy_latency_min{direction="outbound"} 0.26
+twampy_latency_min{direction="inbound"} 0.04
+twampy_latency_min{direction="roundtrip"} 0.31
+# HELP twampy_latency_avg TWAMP avg latency in ms
+# TYPE twampy_latency_avg gauge
+twampy_latency_avg{direction="outbound"} 0.82
+twampy_latency_avg{direction="inbound"} 0.12
+twampy_latency_avg{direction="roundtrip"} 0.95
+# HELP twampy_latency_max TWAMP max latency in ms
+# TYPE twampy_latency_max gauge
+twampy_latency_max{direction="outbound"} 15.62
+twampy_latency_max{direction="inbound"} 3.7
+twampy_latency_max{direction="roundtrip"} 16.06
+# HELP twampy_jitter TWAMP jitter in ms
+# TYPE twampy_jitter gauge
+twampy_jitter{direction="outbound"} 0.84
+twampy_jitter{direction="inbound"} 0.06
+twampy_jitter{direction="roundtrip"} 0.9
 # HELP twampy_loss TWAMP loss in percent
 # TYPE twampy_loss gauge
 twampy_loss{direction="outbound"} 0.0
 twampy_loss{direction="inbound"} 0.0
 twampy_loss{direction="roundtrip"} 0.0
-# HELP twampy_jitter TWAMP jitter in ms
-# TYPE twampy_jitter histogram
-twampy_jitter_bucket{direction="outbound",le="0.005"} 0.0
-twampy_jitter_bucket{direction="outbound",le="0.01"} 0.0
-twampy_jitter_bucket{direction="outbound",le="0.025"} 0.0
-twampy_jitter_bucket{direction="outbound",le="0.05"} 0.0
-twampy_jitter_bucket{direction="outbound",le="0.075"} 1.0
-twampy_jitter_bucket{direction="outbound",le="0.1"} 5.0
-twampy_jitter_bucket{direction="outbound",le="0.25"} 7.0
-twampy_jitter_bucket{direction="outbound",le="0.5"} 15.0
-twampy_jitter_bucket{direction="outbound",le="0.75"} 18.0
-twampy_jitter_bucket{direction="outbound",le="1.0"} 18.0
-twampy_jitter_bucket{direction="outbound",le="2.5"} 18.0
-twampy_jitter_bucket{direction="outbound",le="5.0"} 18.0
-twampy_jitter_bucket{direction="outbound",le="7.5"} 18.0
-twampy_jitter_bucket{direction="outbound",le="10.0"} 18.0
-twampy_jitter_bucket{direction="outbound",le="+Inf"} 18.0
-twampy_jitter_count{direction="outbound"} 18.0
-twampy_jitter_sum{direction="outbound"} 5.706886090339186
-twampy_jitter_bucket{direction="inbound",le="0.005"} 0.0
-twampy_jitter_bucket{direction="inbound",le="0.01"} 0.0
-twampy_jitter_bucket{direction="inbound",le="0.025"} 5.0
-twampy_jitter_bucket{direction="inbound",le="0.05"} 9.0
-twampy_jitter_bucket{direction="inbound",le="0.075"} 15.0
-twampy_jitter_bucket{direction="inbound",le="0.1"} 18.0
-twampy_jitter_bucket{direction="inbound",le="0.25"} 18.0
-twampy_jitter_bucket{direction="inbound",le="0.5"} 18.0
-twampy_jitter_bucket{direction="inbound",le="0.75"} 18.0
-twampy_jitter_bucket{direction="inbound",le="1.0"} 18.0
-twampy_jitter_bucket{direction="inbound",le="2.5"} 18.0
-twampy_jitter_bucket{direction="inbound",le="5.0"} 18.0
-twampy_jitter_bucket{direction="inbound",le="7.5"} 18.0
-twampy_jitter_bucket{direction="inbound",le="10.0"} 18.0
-twampy_jitter_bucket{direction="inbound",le="+Inf"} 18.0
-twampy_jitter_count{direction="inbound"} 18.0
-twampy_jitter_sum{direction="inbound"} 0.8582545184015388
-twampy_jitter_bucket{direction="roundtrip",le="0.005"} 0.0
-twampy_jitter_bucket{direction="roundtrip",le="0.01"} 0.0
-twampy_jitter_bucket{direction="roundtrip",le="0.025"} 0.0
-twampy_jitter_bucket{direction="roundtrip",le="0.05"} 0.0
-twampy_jitter_bucket{direction="roundtrip",le="0.075"} 1.0
-twampy_jitter_bucket{direction="roundtrip",le="0.1"} 2.0
-twampy_jitter_bucket{direction="roundtrip",le="0.25"} 7.0
-twampy_jitter_bucket{direction="roundtrip",le="0.5"} 14.0
-twampy_jitter_bucket{direction="roundtrip",le="0.75"} 17.0
-twampy_jitter_bucket{direction="roundtrip",le="1.0"} 18.0
-twampy_jitter_bucket{direction="roundtrip",le="2.5"} 18.0
-twampy_jitter_bucket{direction="roundtrip",le="5.0"} 18.0
-twampy_jitter_bucket{direction="roundtrip",le="7.5"} 18.0
-twampy_jitter_bucket{direction="roundtrip",le="10.0"} 18.0
-twampy_jitter_bucket{direction="roundtrip",le="+Inf"} 18.0
-twampy_jitter_count{direction="roundtrip"} 18.0
-twampy_jitter_sum{direction="roundtrip"} 6.46590716933948
-# HELP twampy_jitter_created TWAMP jitter in ms
-# TYPE twampy_jitter_created gauge
-twampy_jitter_created{direction="outbound"} 1.7001284122339122e+09
-twampy_jitter_created{direction="inbound"} 1.7001284122340562e+09
-twampy_jitter_created{direction="roundtrip"} 1.7001284122340806e+09
-````
+# HELP twampy_result TWAMP result
+# TYPE twampy_result gauge
+twampy_result{twampy_result="ok"} 1.0
+twampy_result{twampy_result="error"} 0.0
+```
 
+
+## Contributing
+
+Contributions are welcome. Please open an issue or submit a pull request.
 
 

@@ -15,8 +15,8 @@ services:
       - "sender"
       - "twampy-responder"
       - "--forever"
-      - "--json"
       - "--metrics"
+      - "--nodegraph"
     ports:
       - "8000:8000/tcp"
     depends_on: 
