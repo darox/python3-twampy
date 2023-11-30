@@ -11,7 +11,20 @@ all: help
 
 ## Build and push docker image
 release:
-	docker buildx build --platform=linux/amd64 --platform=linux/arm64 -t dariomader/twampy:latest --push $(ROOT)
+	docker buildx build --platform=linux/amd64 --platform=linux/arm64 -t dariomader/twampy:$(tag) --push $(ROOT)
+
+
+## Pack, index Helm chart
+helm:
+	make package index
+
+## Index helm chart
+index:
+	helm repo index --merge install/kubernetes/index.yaml install/kubernetes --url https://github.com/darox/python3-twampy/raw/main/install/kubernetes/
+
+## Package helm chart
+package:
+	helm package ./install/kubernetes/twampy --destination ./install/kubernetes/releases
 
 ## Start Docker compose stack
 local-up:
