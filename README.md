@@ -5,7 +5,7 @@
 This is the Python2 to Python3 conversion of [twampy](https://github.com/nokia/twampy/tree/master).
 
 On top of that it supercharges it by adding:
-- Helm chart for Kubernetes
+- Helm chart for Kubernetes (hosted at https://github.com/darox/helm-charts)
 - Prometheus metrics
 - Grafana dashboard
 
@@ -28,9 +28,9 @@ python3 twampy.py sender
 Twampy can be deployed as Helm chart in Kubernetes.
 
 ```bash
-helm repo add twampy https://darox.github.io/python3-twampy/install/kubernetes/
+helm repo add darox https://darox.github.io/helm-charts/
 helm repo update
-helm install twampy twampy/twampy -n twampy --create-namespace
+helm install twampy darox/twampy -n twampy --create-namespace
 ```
 
 ## Prometheus metrics
